@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-service-svc
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: users-service
+  ports:
+    - targetPort: 8000
+      port: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-deploy
+  annotations:
+    kubernetes.io/change-cause: version 'v1'
+  labels:
+    app: users-service
+spec:
+  minReadySeconds: 5
+  replicas: 1
+  selector:
+    matchLabels:
+      app: users-service
+  template:
+    metadata:
+      labels:
+        app: users-service
+    spec:
+      containers:
+        - name: users
+          image: shaikkhajaibrahim/libuserssvc:1.0
+          envFrom:
+              - secretRef:
+                  name: users-svc-secrets
+          startupProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            httpGet:
+              path: /docs
+              port: 8000
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ps aux | grep "uvicorn"
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            tcpSocket:
+              port: 8000
+          resources:
+            requests:
+              cpu: 68m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 250Mi
+          ports:
+            - name: users-port
+              containerPort: 8000
+        

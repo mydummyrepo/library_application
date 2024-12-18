@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: library-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: library
+  ports:
+    - targetPort: 3000
+      port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: library-deploy
+  labels:
+    app: library
+spec:
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: library
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: library
+    spec:
+      containers:
+        - name: lib
+          image: shaikkhajaibrahim/libwebstore:1.0
+          envFrom:
+            - secretRef:
+                name: library-secrets
+          startupProbe:
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            tcpSocket:
+              port: 3000
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            tcpSocket:
+              port: 3000
+          resources:
+            requests:
+              cpu: 68m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 250Mi
+          ports:
+            - name: lib-port
+              containerPort: 3000
